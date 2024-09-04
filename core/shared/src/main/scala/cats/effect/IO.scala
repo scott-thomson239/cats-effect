@@ -56,6 +56,7 @@ import java.util.UUID
 import java.util.concurrent.Executor
 
 import Platform.static
+import cats.effect.unsafe.FiberId
 
 /**
  * A pure abstraction representing the intention to perform a side effect, where the result of
@@ -1090,7 +1091,8 @@ sealed abstract class IO[+A] private () extends IOPlatform[A] {
         ),
       this,
       runtime.compute,
-      runtime
+      runtime,
+      FiberId.nextId.getAndIncrement()
     )
 
     if (registerCallback) {

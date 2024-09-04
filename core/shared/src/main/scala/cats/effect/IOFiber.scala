@@ -71,7 +71,8 @@ private final class IOFiber[A](
     cb: OutcomeIO[A] => Unit,
     startIO: IO[A],
     startEC: ExecutionContext,
-    rt: IORuntime
+    rt: IORuntime,
+    val id: Int
 ) extends IOFiberPlatform[A]
     with FiberIO[A]
     with Runnable {
@@ -882,7 +883,8 @@ private final class IOFiber[A](
             null,
             cur.ioa,
             ec,
-            runtime
+            runtime,
+            FiberId.nextId.getAndIncrement()
           )
 
           // println(s"<$name> spawning <$childName>")
@@ -906,7 +908,8 @@ private final class IOFiber[A](
                     null,
                     cur.ioa,
                     ec,
-                    rt
+                    rt,
+                    FiberId.nextId.getAndIncrement()
                   )
 
                   val fiberB = new IOFiber[Any](
@@ -914,7 +917,8 @@ private final class IOFiber[A](
                     null,
                     cur.iob,
                     ec,
-                    rt
+                    rt,
+                    FiberId.nextId.getAndIncrement()
                   )
 
                   fiberA.setCallback(oc => cb(Right(Left((oc, fiberB)))))
