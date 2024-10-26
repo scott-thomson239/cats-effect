@@ -113,6 +113,10 @@ private final class WorkerThread[P](
     def run() = ()
   }
 
+  val MAX_BUFFER_SIZE = 1000
+  private[unsafe] val traces: WorkerTraceBuffer =
+    new WorkerTraceBuffer(ExternalQueueTicks, MAX_BUFFER_SIZE)
+
   val nameIndex: Int = pool.blockedWorkerThreadNamingIndex.getAndIncrement()
 
   // Constructor code.
@@ -293,6 +297,14 @@ private final class WorkerThread[P](
 
   private[unsafe] def ownsTimers(timers: TimerHeap): Boolean =
     sleepers eq timers
+
+  private[unsafe] def instrumentFiber(fiber: Runnable): Unit = fiber match {
+    case f: IOFiber[_] => {
+      val id = f.id
+      traces.pushFiberRun(id, now)
+    }
+    case _ => ()
+  }
 
   /**
    * The run loop of the [[WorkerThread]].
@@ -591,6 +603,7 @@ private final class WorkerThread[P](
               case t if NonFatal(t) => pool.reportFailure(t)
               case t: Throwable => IOFiber.onFatalFailure(t)
             }
+            instrumentFiber(fiber)
           } else if (element.isInstanceOf[Runnable]) {
             val fiber = element.asInstanceOf[Runnable]
 
@@ -605,15 +618,19 @@ private final class WorkerThread[P](
               case t if NonFatal(t) => pool.reportFailure(t)
               case t: Throwable => IOFiber.onFatalFailure(t)
             }
+            instrumentFiber(fiber) // TODO: will these fiber runs go over the 64 array size?
           }
 
           // update the current time
           now = System.nanoTime()
+          traces.complete(now)
 
           // Transition to executing fibers from the local queue.
           state = 4
 
         case 1 =>
+          now = System.nanoTime()
+          traces.complete(now)
           // Check the external queue after a failed dequeue from the local
           // queue (due to the local queue being empty).
           val element = external.poll(rnd)
@@ -650,6 +667,7 @@ private final class WorkerThread[P](
               case t if NonFatal(t) => pool.reportFailure(t)
               case t: Throwable => IOFiber.onFatalFailure(t)
             }
+            instrumentFiber(fiber)
 
             // Transition to executing fibers from the local queue.
             state = 4
@@ -677,6 +695,7 @@ private final class WorkerThread[P](
         case 2 =>
           // update the current time
           now = System.nanoTime()
+          traces.complete(now)
 
           // First try to steal some expired timers:
           if (pool.stealTimers(now, rnd)) {

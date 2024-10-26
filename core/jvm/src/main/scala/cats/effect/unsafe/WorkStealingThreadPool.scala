@@ -519,6 +519,9 @@ private[effect] final class WorkStealingThreadPool[P](
     ()
   }
 
+  private[unsafe] def traceBuffers(): Map[Int, WorkerTraceBuffer] =
+    workerThreads.map(w => (w.index, w.traces)).toMap
+
   /**
    * Returns a snapshot of the fibers currently live on this thread pool.
    *

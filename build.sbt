@@ -44,7 +44,7 @@ ThisBuild / git.gitUncommittedChanges := {
 ThisBuild / tlBaseVersion := "3.6"
 ThisBuild / tlUntaggedAreSnapshots := false
 
-ThisBuild / organization := "org.typelevel"
+ThisBuild / organization := "org.me"
 ThisBuild / organizationName := "Typelevel"
 ThisBuild / tlSonatypeUseLegacyHost := false
 
